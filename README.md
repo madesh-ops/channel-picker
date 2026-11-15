@@ -1,4 +1,13 @@
-# Channel Picker
+<p align="center">
+  <img src="docs/icon.png" alt="Channel Picker icon" width="112" height="112">
+</p>
+
+<h1 align="center">Channel Picker</h1>
+
+<p align="center">
+  Pick channels from a 5.1 movie soundtrack and mix them to stereo.<br>
+  <a href="https://github.com/madesh-ops/channel-picker/releases/latest"><b>Download for Windows</b></a>
+</p>
 
 A Windows desktop app for listening to individual channels of a 5.1 movie soundtrack on ordinary
 stereo speakers or headphones. Open a video or audio file, choose which of **FL, FR, Center, LFE,
@@ -8,6 +17,30 @@ Example: the **Surround to Stereo** preset mutes the front, centre and LFE chann
 Surround Left → Left and Surround Right → Right, so you hear only the rear-channel content.
 
 Built with [Tauri 2](https://tauri.app) (Rust) and React. ffmpeg does the decoding and encoding.
+
+## Screenshots
+
+![Channel Picker previewing a DTS 5.1 movie with the Surround to Stereo preset: synced video, channel strips with live meters, and the sound-reactive orb](docs/screenshot-main.jpg)
+*Previewing a DTS 5.1 movie with **Surround to Stereo**: only SL and SR are enabled, the video plays
+in sync, and the orb reacts on the left and right sides.*
+
+![Downmix coefficient grid and a verified stereo export](docs/screenshot-export.jpg)
+*The downmix coefficient grid, and an export checked after writing: 2 channels, stereo, exact
+duration, no clipping.*
+
+<p align="center">
+  <img src="docs/screenshot-start.jpg" alt="Start screen listing supported decoders and export formats" width="70%">
+</p>
+<p align="center"><em>The start screen shows which formats your ffmpeg build can decode and export.</em></p>
+
+## Install
+
+1. Download `Channel-Picker_x.y.z_x64-setup.exe` (or the `.msi`) from
+   [Releases](https://github.com/madesh-ops/channel-picker/releases/latest) and run it.
+2. Install ffmpeg if you don't have it: `winget install Gyan.FFmpeg`.
+
+The installer isn't code-signed, so Windows SmartScreen may show *"Windows protected your PC"* the
+first time. Choose **More info → Run anyway**.
 
 ## Features
 
