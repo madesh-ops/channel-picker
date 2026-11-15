@@ -289,6 +289,7 @@ export default function App() {
         </div>
         {media && stream && (
           <Transport
+            key={`${media.path}#${stream.index}`}
             position={tick?.position ?? 0}
             duration={stream.duration}
             playing={playing}
