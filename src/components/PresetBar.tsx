@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Preset } from "../lib/types";
+import { Icon } from "./ui";
 
 interface Props {
   presets: Preset[];
@@ -10,65 +11,78 @@ interface Props {
   onDelete: (name: string) => void;
 }
 
+/** Presets as a selectable source list: one click applies. */
 export function PresetBar({ presets, current, disabled, onApply, onSave, onDelete }: Props) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const builtins = presets.filter((p) => p.builtin);
   const user = presets.filter((p) => !p.builtin);
-  const currentPreset = presets.find((p) => p.name === current);
 
-  return (
-    <section className="panel presets">
-      <header className="panel-head">
-        <h2>Presets</h2>
-      </header>
-      <div className="preset-row">
-        <select
-          value={current ?? ""}
+  const item = (p: Preset) => {
+    const selected = p.name === current;
+    return (
+      <div key={p.name} className={`preset-wrap ${selected ? "selected" : ""}`}>
+        <button
+          className={`preset-item ${selected ? "selected" : ""}`}
+          aria-pressed={selected}
           disabled={disabled}
-          onChange={(e) => e.target.value && onApply(e.target.value)}
-          aria-label="Channel-selection preset"
+          onClick={() => onApply(p.name)}
         >
-          <option value="" disabled>
-            Custom (unsaved)
-          </option>
-          <optgroup label="Built-in">
-            {builtins.map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </optgroup>
-          {user.length > 0 && (
-            <optgroup label="My presets">
-              {user.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-        {currentPreset && !currentPreset.builtin && (
-          <button className="ghost-btn" onClick={() => onDelete(currentPreset.name)} title="Delete this preset">
-            Delete
+          <span className="p-check">{selected && <Icon name="check" size={14} />}</span>
+          <span className="p-text">
+            <span className="p-name">{p.name}</span>
+            {p.description && <span className="p-desc" style={{ display: "block" }}>{p.description}</span>}
+          </span>
+        </button>
+        {!p.builtin && (
+          <button
+            className="icon-btn p-del"
+            onClick={() => onDelete(p.name)}
+            aria-label={`Delete preset ${p.name}`}
+            title="Delete preset"
+          >
+            <Icon name="xmark" size={13} />
           </button>
         )}
       </div>
-      {currentPreset?.description && <p className="hint">{currentPreset.description}</p>}
+    );
+  };
+
+  return (
+    <section>
+      <div className="group-label">Presets</div>
+      <div className="preset-list">{builtins.map(item)}</div>
+      {user.length > 0 && (
+        <>
+          <div className="group-label" style={{ marginTop: 14 }}>
+            My Presets
+          </div>
+          <div className="preset-list">{user.map(item)}</div>
+        </>
+      )}
+      {current === null && (
+        <p className="t-caption" style={{ margin: "8px 10px 0" }}>
+          Current selection is custom.
+        </p>
+      )}
 
       {saving ? (
         <form
-          className="preset-row"
+          className="preset-save"
           onSubmit={async (e) => {
             e.preventDefault();
             if (!name.trim()) return;
-            await onSave(name.trim());
-            setSaving(false);
-            setName("");
+            try {
+              await onSave(name.trim());
+              setSaving(false);
+              setName("");
+            } catch {
+              /* error shown by parent */
+            }
           }}
         >
           <input
+            className="field-input"
             autoFocus
             placeholder="Preset name"
             value={name}
@@ -76,16 +90,13 @@ export function PresetBar({ presets, current, disabled, onApply, onSave, onDelet
             onKeyDown={(e) => e.key === "Escape" && setSaving(false)}
             aria-label="New preset name"
           />
-          <button type="submit" className="primary-btn" disabled={!name.trim()}>
+          <button type="submit" className="btn primary" disabled={!name.trim()}>
             Save
-          </button>
-          <button type="button" className="ghost-btn" onClick={() => setSaving(false)}>
-            Cancel
           </button>
         </form>
       ) : (
-        <button className="ghost-btn wide" disabled={disabled} onClick={() => setSaving(true)}>
-          Save current selection as preset…
+        <button className="btn plain" style={{ marginTop: 6 }} disabled={disabled} onClick={() => setSaving(true)}>
+          <Icon name="plus" size={15} /> Save as Preset…
         </button>
       )}
     </section>

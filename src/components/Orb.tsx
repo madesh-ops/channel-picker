@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Tick } from "../lib/types";
+import { SectionTitle } from "./ui";
 
 /**
  * Dot-matrix orb: a rotating sphere of dots pushed outward by the sound.
@@ -19,9 +20,10 @@ const POINTS = Array.from({ length: DOTS }, (_, i) => {
   return { x: Math.cos(t) * r, y, z: Math.sin(t) * r };
 });
 
-const LOW = [79, 140, 255]; // accent blue
-const MID = [111, 211, 168]; // green
-const HIGH = [242, 184, 75]; // warm
+// System blue → green → orange.
+const LOW = [10, 132, 255];
+const MID = [48, 209, 88];
+const HIGH = [255, 159, 10];
 
 function color(d: number, alpha: number) {
   const [a, b, t] = d < 0.5 ? [LOW, MID, d * 2] : [MID, HIGH, (d - 0.5) * 2];
@@ -104,8 +106,8 @@ export function Orb({ tick }: { tick: Tick | null }) {
       ctx.clearRect(0, 0, w, h);
       // Soft glow behind the orb that swells with energy.
       const glow = ctx.createRadialGradient(cx, cy, R0 * 0.2, cx, cy, R0 * (1.6 + energy));
-      glow.addColorStop(0, `rgba(79,140,255,${(0.1 + energy * 0.25).toFixed(3)})`);
-      glow.addColorStop(1, "rgba(79,140,255,0)");
+      glow.addColorStop(0, `rgba(10,132,255,${(0.08 + energy * 0.22).toFixed(3)})`);
+      glow.addColorStop(1, "rgba(10,132,255,0)");
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
 
@@ -147,17 +149,14 @@ export function Orb({ tick }: { tick: Tick | null }) {
   }, []);
 
   return (
-    <section className="panel orb-panel">
-      <header className="panel-head">
-        <h2>Visualizer</h2>
-        <span className="hint">{tick?.playing ? "Live output" : "Press play"}</span>
-      </header>
+    <section className="card">
+      <SectionTitle aside={tick?.playing ? "Live" : "Paused"}>Visualizer</SectionTitle>
       <div className="orb-wrap">
         <canvas ref={canvasRef} className="orb-canvas" aria-label="Sound-reactive dot orb" role="img" />
-        <span className="orb-side left">L</span>
-        <span className="orb-side right">R</span>
-        <span className="orb-axis top">treble</span>
-        <span className="orb-axis bottom">bass</span>
+        <span className="orb-label l">L</span>
+        <span className="orb-label r">R</span>
+        <span className="orb-label t">Treble</span>
+        <span className="orb-label b">Bass</span>
       </div>
     </section>
   );

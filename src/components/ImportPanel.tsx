@@ -1,4 +1,5 @@
 import type { AppStatus } from "../lib/types";
+import { Icon } from "./ui";
 
 interface Props {
   status: AppStatus | null;
@@ -14,51 +15,59 @@ export function ImportPanel({ status, dragging, loading, error, onOpen, onLocate
   return (
     <div className={`import ${dragging ? "dragging" : ""}`}>
       <div className="import-card">
-        <svg viewBox="0 0 64 64" width="56" height="56" aria-hidden className="import-icon">
-          <rect x="6" y="22" width="6" height="20" rx="2" />
-          <rect x="18" y="14" width="6" height="36" rx="2" />
-          <rect x="30" y="8" width="6" height="48" rx="2" className="accent" />
-          <rect x="42" y="14" width="6" height="36" rx="2" className="accent" />
-          <rect x="54" y="22" width="6" height="20" rx="2" />
-        </svg>
-        <h1>Pick channels from a 5.1 soundtrack</h1>
-        <p>
-          Open a movie or audio file. Choose which of FL, FR, Center, LFE, SL and SR to keep, preview the mix,
-          and export a standard stereo file for headphones or 2.0 speakers.
+        <div className="import-art" aria-hidden>
+          <Icon name="waveform" size={40} />
+        </div>
+        <h1 className="t-display">Pick channels from a 5.1&nbsp;soundtrack</h1>
+        <p className="lede">
+          Choose which of Front, Center, LFE and Surround to keep, hear the mix as you go, and save it as a standard
+          stereo file for headphones or two speakers.
         </p>
-        <button className="primary-btn big" onClick={onOpen} disabled={!ready || loading}>
-          {loading ? "Reading file…" : "Open video or audio file…"}
-        </button>
-        <p className="hint">or drop a file anywhere in this window</p>
-        {error && <p className="error">{error}</p>}
+
+        <div className="drop-zone">
+          <button className="btn primary large" onClick={onOpen} disabled={!ready || loading}>
+            <Icon name="folder" size={17} />
+            {loading ? "Reading file…" : "Open Video or Audio…"}
+          </button>
+          <span className="t-caption">{dragging ? "Drop to open" : "or drop a file anywhere in this window"}</span>
+        </div>
+
+        {error && (
+          <div className="alert" role="alert" style={{ width: "100%", textAlign: "left" }}>
+            <Icon name="exclamation" className="icon" size={16} />
+            <div className="grow">{error}</div>
+          </div>
+        )}
 
         <div className="support">
           {status?.error ? (
-            <div className="error">
-              {status.error}.{" "}
-              <button className="link-btn" onClick={onLocateFfmpeg}>
-                Locate the ffmpeg folder…
-              </button>
+            <div className="alert" style={{ textAlign: "left" }}>
+              <Icon name="exclamation" className="icon" size={16} />
+              <div className="grow">
+                {status.error}.{" "}
+                <button className="link" onClick={onLocateFfmpeg}>
+                  Locate ffmpeg folder…
+                </button>
+              </div>
             </div>
           ) : (
             <>
-              <div className="support-row">
-                <span className="support-head">Decodes</span>
+              <div className="chips">
+                <span className="chips-label">Decodes</span>
                 {status?.decoders.map((d) => (
-                  <span key={d.codec} className={`chip ${d.available ? "" : "missing"}`} title={d.codec}>
+                  <span key={d.codec} className={`chip ${d.available ? "ok" : "missing"}`} title={d.codec}>
                     {d.label}
                   </span>
                 ))}
               </div>
-              <div className="support-row">
-                <span className="support-head">Exports</span>
+              <div className="chips">
+                <span className="chips-label">Exports</span>
                 {status?.encoders.map((d) => (
-                  <span key={d.codec} className={`chip ${d.available ? "" : "missing"}`} title={d.codec}>
+                  <span key={d.codec} className={`chip ${d.available ? "ok" : "missing"}`} title={d.codec}>
                     {d.label}
                   </span>
                 ))}
               </div>
-              {status?.ffmpeg && <div className="muted small">{status.ffmpeg.version}</div>}
             </>
           )}
         </div>

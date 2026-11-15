@@ -1,6 +1,7 @@
 import type { GainReport, MixSettings } from "../lib/types";
 import { fmtDb } from "../lib/api";
 import { Meter } from "./Meter";
+import { Disclosure, SectionTitle, Segmented, Slider } from "./ui";
 
 interface Props {
   mix: MixSettings;
@@ -13,80 +14,88 @@ interface Props {
 
 export function MasterSection({ mix, report, outputPeaks, clipLatched, onResetClip, onChange }: Props) {
   return (
-    <section className="panel master">
-      <header className="panel-head">
-        <h2>Stereo output</h2>
-        <span className="out-badge" title="Exports are always plain two-channel stereo">
-          Stereo 2.0 · L/R
-        </span>
-      </header>
+    <section className="card">
+      <SectionTitle aside={<span className="badge blue" title="Exports are always plain two-channel stereo">Stereo 2.0</span>}>
+        Output
+      </SectionTitle>
 
-      <div className="master-meters">
-        <Meter peak={outputPeaks[0]} label="L" horizontal />
-        <Meter peak={outputPeaks[1]} label="R" horizontal />
-        <button
-          className={`clip-led ${clipLatched ? "lit" : ""}`}
-          onClick={onResetClip}
-          title={clipLatched ? "Clipping detected: click to reset" : "No clipping"}
-        >
-          CLIP
-        </button>
+      <div className="out-meters">
+        <div className="meter-row">
+          <span className="ch">L</span>
+          <Meter peak={outputPeaks[0]} horizontal label="Left output" />
+          <button
+            className={`clip ${clipLatched ? "lit" : ""}`}
+            onClick={onResetClip}
+            title={clipLatched ? "Clipping detected. Click to reset." : "No clipping"}
+            aria-label={clipLatched ? "Clipping detected, reset" : "No clipping"}
+          >
+            CLIP
+          </button>
+        </div>
+        <div className="meter-row">
+          <span className="ch">R</span>
+          <Meter peak={outputPeaks[1]} horizontal label="Right output" />
+          <span style={{ width: 44 }} />
+        </div>
       </div>
 
-      <div className="segmented" role="radiogroup" aria-label="Gain staging">
-        <button
-          role="radio"
-          aria-checked={mix.gainMode === "safe"}
-          className={mix.gainMode === "safe" ? "active" : ""}
-          onClick={() => onChange({ gainMode: "safe" })}
-        >
-          Safe gain
-        </button>
-        <button
-          role="radio"
-          aria-checked={mix.gainMode === "manual"}
-          className={mix.gainMode === "manual" ? "active" : ""}
-          onClick={() => onChange({ gainMode: "manual" })}
-        >
-          Manual
-        </button>
-      </div>
-      <p className="hint">
+      <Segmented
+        label="Gain staging"
+        value={mix.gainMode}
+        onChange={(gainMode) => onChange({ gainMode })}
+        options={[
+          { value: "safe", label: "Safe Gain", title: "Scale down so nothing can clip" },
+          { value: "manual", label: "Manual" },
+        ]}
+      />
+      <p className="t-caption" style={{ margin: "8px 2px 12px" }}>
         {mix.gainMode === "safe"
-          ? "Scales the mix down so full-scale audio on every selected channel cannot clip."
-          : "No automatic headroom. Watch the meters, or turn on normalization when exporting."}
+          ? "Turns the mix down just enough that every selected channel at full volume still can't clip."
+          : "No automatic headroom. Watch the meters, or normalize when exporting."}
       </p>
 
-      <label className="gain">
-        <span>Master</span>
-        <input
-          type="range"
+      <div className="chan-gain">
+        <div className="row">
+          <span>Master</span>
+          <output>{fmtDb(mix.masterGainDb)}</output>
+        </div>
+        <Slider
           min={-24}
           max={12}
           step={0.5}
           value={mix.masterGainDb}
-          onChange={(e) => onChange({ masterGainDb: Number(e.target.value) })}
-          onDoubleClick={() => onChange({ masterGainDb: 0 })}
-          aria-label="Master gain"
+          resetTo={0}
+          onChange={(masterGainDb) => onChange({ masterGainDb })}
+          label="Master gain"
         />
-        <output>{fmtDb(mix.masterGainDb)}</output>
-      </label>
+      </div>
 
       {report && (
-        <dl className="stats">
-          <dt>Worst-case sum L / R</dt>
-          <dd>
-            {report.worstCaseLeft.toFixed(2)} / {report.worstCaseRight.toFixed(2)}
-          </dd>
-          <dt>Safe-gain trim</dt>
-          <dd>{mix.gainMode === "safe" ? fmtDb(report.safeGainDb) : "off"}</dd>
-          <dt>Total output gain</dt>
-          <dd>{fmtDb(report.outputGainDb)}</dd>
-          <dt>Headroom</dt>
-          <dd className={report.canClip ? "warn" : "ok"}>{report.canClip ? "Can clip at full scale" : "Clip-safe"}</dd>
-          <dt>Routing</dt>
-          <dd>{report.routes.length ? report.routes.join(", ") : "Nothing selected (silence)"}</dd>
-        </dl>
+        <>
+          <div className="headroom">
+            {report.canClip ? <span className="warn">Can clip at full volume</span> : <span className="ok">Clip-safe</span>}
+            <span>·</span>
+            <span>{report.routes.length ? report.routes.join(", ") : "Nothing selected"}</span>
+          </div>
+          <Disclosure title="Gain details">
+            <div className="list stats">
+              <div className="list-row">
+                <span className="k">Worst-case sum L / R</span>
+                <span className="v num">
+                  {report.worstCaseLeft.toFixed(2)} / {report.worstCaseRight.toFixed(2)}
+                </span>
+              </div>
+              <div className="list-row">
+                <span className="k">Safe-gain trim</span>
+                <span className="v num">{mix.gainMode === "safe" ? fmtDb(report.safeGainDb) : "Off"}</span>
+              </div>
+              <div className="list-row">
+                <span className="k">Total output gain</span>
+                <span className="v num">{fmtDb(report.outputGainDb)}</span>
+              </div>
+            </div>
+          </Disclosure>
+        </>
       )}
     </section>
   );

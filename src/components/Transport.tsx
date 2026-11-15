@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { formatTime } from "../lib/api";
+import { Icon } from "./ui";
 
 interface Props {
   position: number;
@@ -11,73 +12,107 @@ interface Props {
 }
 
 export function Transport({ position, duration, playing, disabled, onToggle, onSeek }: Props) {
-  // While dragging, the bar shows the drag position instead of playback.
-  const [scrub, setScrub] = useState<number | null>(null);
-  const pending = useRef<number | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onSeekRef = useRef(onSeek);
-  onSeekRef.current = onSeek;
-
-  // Finishing a drag must never depend on the mouse being released over the
-  // bar itself: a release over the title bar or outside the window used to
-  // leave the bar frozen in drag mode. Any of these ends the drag.
-  useEffect(() => {
-    const commit = () => {
-      const v = pending.current;
-      if (v === null) return;
-      pending.current = null;
-      setScrub(null);
-      onSeekRef.current(v);
-    };
-    const onMove = (e: PointerEvent) => {
-      if (e.buttons === 0) commit(); // button already released somewhere we didn't see
-    };
-    const el = inputRef.current;
-    el?.addEventListener("change", commit); // native: fires once when the value is committed
-    window.addEventListener("pointerup", commit);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("blur", commit);
-    return () => {
-      el?.removeEventListener("change", commit);
-      window.removeEventListener("pointerup", commit);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("blur", commit);
-    };
-  }, []);
-
-  const shown = scrub ?? position;
+  const [drag, setDrag] = useState<number | null>(null);
+  const shown = drag ?? position;
+  const skip = (d: number) => onSeek(Math.max(0, Math.min(duration, position + d)));
   return (
     <div className="transport">
-      <button className="play" onClick={onToggle} disabled={disabled} aria-label={playing ? "Pause" : "Play"}>
-        {playing ? (
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-            <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
-            <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-            <path d="M7 5l12 7-12 7z" fill="currentColor" />
-          </svg>
-        )}
+      <button className="icon-btn" onClick={() => skip(-10)} disabled={disabled} aria-label="Back 10 seconds" title="Back 10 s">
+        <Icon name="back10" size={20} />
       </button>
-      <span className="time">{formatTime(shown)}</span>
-      <input
-        ref={inputRef}
-        className="seek"
-        type="range"
-        min={0}
-        max={Math.max(duration, 0.001)}
-        step={0.1}
-        value={Math.min(shown, duration)}
-        disabled={disabled}
-        onChange={(e) => {
-          const v = Number(e.target.value);
-          pending.current = v;
-          setScrub(v);
-        }}
-        aria-label="Seek"
-      />
-      <span className="time">{formatTime(duration)}</span>
+      <button className="play-btn" onClick={onToggle} disabled={disabled} aria-label={playing ? "Pause" : "Play"} title="Play/Pause (Space)">
+        <Icon name={playing ? "pause" : "play"} size={18} />
+      </button>
+      <button className="icon-btn" onClick={() => skip(10)} disabled={disabled} aria-label="Forward 10 seconds" title="Forward 10 s">
+        <Icon name="fwd10" size={20} />
+      </button>
+      <span className="time" aria-hidden>{formatTime(shown)}</span>
+      <Scrubber value={position} max={duration} disabled={disabled} onDrag={setDrag} onCommit={onSeek} />
+      <span className="time" aria-hidden>-{formatTime(Math.max(0, duration - shown))}</span>
+    </div>
+  );
+}
+
+/**
+ * Seek bar tracked 1:1 with pointer capture: the drag follows the pointer
+ * even outside the bar, and always ends (pointerup or lost capture), so it
+ * can never be left stuck in drag mode.
+ */
+function Scrubber({
+  value,
+  max,
+  disabled,
+  onDrag,
+  onCommit,
+}: {
+  value: number;
+  max: number;
+  disabled: boolean;
+  onDrag: (v: number | null) => void;
+  onCommit: (v: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<number | null>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  const at = (clientX: number) => {
+    const r = ref.current!.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * max;
+  };
+  const update = (v: number | null) => {
+    dragRef.current = v;
+    setDragging(v);
+    onDrag(v);
+  };
+  const finish = () => {
+    const v = dragRef.current;
+    if (v === null) return;
+    update(null);
+    onCommit(v);
+  };
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (disabled || e.button !== 0) return;
+    ref.current!.setPointerCapture(e.pointerId);
+    update(at(e.clientX)); // respond on press
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current !== null) update(at(e.clientX));
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const step = { ArrowLeft: -5, ArrowRight: 5, PageDown: -30, PageUp: 30 }[e.key];
+    if (step !== undefined) onCommit(Math.max(0, Math.min(max, value + step)));
+    else if (e.key === "Home") onCommit(0);
+    else if (e.key === "End") onCommit(max);
+    else return;
+    e.preventDefault();
+  };
+
+  const shown = dragging ?? value;
+  const pct = max > 0 ? (Math.min(shown, max) / max) * 100 : 0;
+  return (
+    <div
+      ref={ref}
+      className={`scrubber ${dragging !== null ? "dragging" : ""}`}
+      role="slider"
+      tabIndex={disabled ? -1 : 0}
+      aria-label="Playback position"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(max)}
+      aria-valuenow={Math.round(shown)}
+      aria-valuetext={`${formatTime(shown)} of ${formatTime(max)}`}
+      aria-disabled={disabled}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={finish}
+      onPointerCancel={finish}
+      onLostPointerCapture={finish}
+      onKeyDown={onKeyDown}
+    >
+      <div className="scrubber-track">
+        <div className="scrubber-fill" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }

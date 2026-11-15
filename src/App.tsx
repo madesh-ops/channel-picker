@@ -25,6 +25,7 @@ import { Transport } from "./components/Transport";
 import { PresetBar } from "./components/PresetBar";
 import { ExportPanel, type ExportOptions } from "./components/ExportPanel";
 import { Orb } from "./components/Orb";
+import { Icon } from "./components/ui";
 import { VideoPanel } from "./components/VideoPanel";
 
 const MEDIA_EXTENSIONS = [
@@ -276,18 +277,21 @@ export default function App() {
 
   const peaks = tick?.inputPeaks ?? [];
 
+  // Arrange the cards like the speakers around the listener when the layout is 5.1-shaped.
+  const roles = stream?.channelInfo.map((c) => c.role) ?? [];
+  const spatial =
+    roles.length > 0 && roles.every((r) => (ROLES_51 as readonly string[]).includes(r)) && new Set(roles).size === roles.length;
+
   return (
     <div className="app">
-      <header className="topbar">
+      <header className="toolbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden>
-            <i />
-            <i />
-            <i />
+          <span className="brand-glyph" aria-hidden>
+            <Icon name="waveform" size={16} />
           </span>
           Channel Picker
         </div>
-        {media && stream && (
+        {media && stream ? (
           <Transport
             key={`${media.path}#${stream.index}`}
             position={tick?.position ?? 0}
@@ -297,27 +301,29 @@ export default function App() {
             onToggle={togglePlay}
             onSeek={(p) => api.previewSeek(p).catch((e) => setError(msg(e)))}
           />
+        ) : (
+          <span />
         )}
-        <div className={`ff-chip ${status?.ffmpeg ? "ok" : "bad"}`} title={status?.ffmpeg?.ffmpeg ?? status?.error ?? ""}>
-          {status?.ffmpeg ? "ffmpeg ready" : "ffmpeg missing"}
+        <div
+          className={`status-chip ${status?.ffmpeg ? "" : "bad"}`}
+          title={status?.ffmpeg?.version ?? status?.error ?? ""}
+        >
+          <span className="status-dot" />
+          {status?.ffmpeg ? "ffmpeg ready" : status ? "ffmpeg missing" : "Starting…"}
         </div>
       </header>
-
-      {(error || tick?.error) && media && (
-        <div className="banner error" role="alert">
-          {error ?? tick?.error}
-          <button className="link-btn" onClick={() => setError(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {!media || !stream || !mix ? (
         <ImportPanel status={status} dragging={dragging} loading={loading} error={error} onOpen={openDialog} onLocateFfmpeg={locateFfmpeg} />
       ) : (
-        <main className={`workspace ${dragging ? "dragging" : ""}`}>
-          <aside className="col left">
-            <SourceInfo media={media} stream={stream} onSelectStream={(i) => loadStream(media, media.audioStreams.find((s) => s.index === i)!)} onOpen={openDialog} />
+        <div className={`shell ${dragging ? "dragging" : ""}`}>
+          <aside className="pane sidebar">
+            <SourceInfo
+              media={media}
+              stream={stream}
+              onSelectStream={(i) => loadStream(media, media.audioStreams.find((s) => s.index === i)!)}
+              onOpen={openDialog}
+            />
             <PresetBar
               presets={presets}
               current={presetName}
@@ -328,7 +334,17 @@ export default function App() {
             />
           </aside>
 
-          <section className="col center">
+          <main className="pane main">
+           <div className="main-inner">
+            {(error || tick?.error) && (
+              <div className="alert" role="alert">
+                <Icon name="exclamation" className="icon" size={16} />
+                <div className="grow">{error ?? tick?.error}</div>
+                <button className="link" onClick={() => setError(null)}>
+                  Dismiss
+                </button>
+              </div>
+            )}
             {media.video && stream.decoderAvailable && (
               <VideoPanel
                 video={media.video}
@@ -344,28 +360,35 @@ export default function App() {
                 }}
               />
             )}
-            <section className="panel mixer">
-              <header className="panel-head">
-                <h2>Channel selection</h2>
-                <span className="hint">
-                  {heardCount} of {mix.channels.length} channels in the mix{anySolo ? " (solo active)" : ""}
-                </span>
-                <div className="head-actions">
-                  <button className="ghost-btn" onClick={() => setAll(true)}>
-                    Enable all
-                  </button>
-                  <button className="ghost-btn" onClick={() => setAll(false)}>
-                    Mute all
-                  </button>
+            <section aria-labelledby="channels-title">
+              <div className="page-head" style={{ marginBottom: 10 }}>
+                <div className="grow">
+                  <h2 id="channels-title" className="t-title">
+                    Channels
+                  </h2>
+                  <div className="t-caption">
+                    {heardCount} of {mix.channels.length} in the mix
+                    {anySolo ? " · solo is on" : ""}
+                  </div>
                 </div>
-              </header>
+                <button className="btn plain" onClick={() => setAll(true)}>
+                  Enable All
+                </button>
+                <button className="btn plain" onClick={() => setAll(false)}>
+                  Mute All
+                </button>
+              </div>
               {stream.kind !== "multichannel" && (
                 <p className="notice">
-                  This track is {stream.kind}. It has no discrete Center, LFE or Surround channels to pick from, so
-                  only the channels it carries are shown.
+                  This track is {stream.kind}, so there are no separate Center, LFE or Surround channels to pick from.
                 </p>
               )}
-              <div className="strips">
+              {spatial && (
+                <div className="room-labels" aria-hidden>
+                  <span>Front</span>
+                </div>
+              )}
+              <div className={`chan-grid ${spatial ? "spatial" : ""}`}>
                 {stream.channelInfo.map((c, i) =>
                   mix.channels[i] ? (
                     <ChannelStrip
@@ -374,19 +397,26 @@ export default function App() {
                       strip={mix.channels[i]}
                       heard={isHeard(mix.channels[i])}
                       peak={peaks[i] ?? 0}
+                      area={spatial ? c.role : undefined}
                       onChange={(p) => editStrip(i, p)}
                     />
                   ) : null,
                 )}
                 {ghostRoles.map((r) => (
-                  <GhostStrip key={r} id={r} label={ROLE_LABELS[r]} />
+                  <GhostStrip key={r} id={r} label={ROLE_LABELS[r]} area={spatial ? r : undefined} />
                 ))}
               </div>
+              {spatial && (
+                <div className="room-labels" aria-hidden style={{ marginTop: 6 }}>
+                  <span>Rear</span>
+                </div>
+              )}
             </section>
             <RoutingMatrix channels={stream.channelInfo} strips={mix.channels} isHeard={isHeard} onChange={editStrip} />
-          </section>
+           </div>
+          </main>
 
-          <aside className="col right">
+          <aside className="pane inspector">
             <Orb tick={tick} />
             <MasterSection
               mix={mix}
@@ -411,7 +441,7 @@ export default function App() {
               onCancel={() => api.cancelExport()}
             />
           </aside>
-        </main>
+        </div>
       )}
     </div>
   );

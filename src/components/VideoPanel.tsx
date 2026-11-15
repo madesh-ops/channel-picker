@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { VideoInfo } from "../lib/types";
+import { Icon, Segmented } from "./ui";
 
 /** Serves the latest decoded frame (see `vframe` protocol in lib.rs). */
 const FRAME_URL = convertFileSrc("frame", "vframe");
@@ -88,58 +89,59 @@ export function VideoPanel({ video, enabled, fullQuality, onToggle, onQuality }:
   };
 
   const fps = video.fps.toFixed(video.fps % 1 ? 3 : 0);
+
+  if (!enabled) {
+    return (
+      <div className="card video-hidden">
+        <Icon name="film" size={18} />
+        <div style={{ flex: 1 }}>
+          <div className="t-headline">Video hidden</div>
+          <div className="t-caption">
+            {video.width}×{video.height} · {video.codecName}. Hiding it saves decoding work.
+          </div>
+        </div>
+        <button className="btn" onClick={() => onToggle(true)}>
+          <Icon name="eye" size={16} /> Show Video
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <section className="panel video-panel">
-      <header className="panel-head">
-        <h2>Video</h2>
-        <span className="hint">
-          {video.width}×{video.height} · {video.codecName} · {fps} fps
-          {enabled && frameSize && ` · showing ${frameSize[0]}×${frameSize[1]}`}
+    <section className="card video-card" aria-label="Video">
+      <div
+        ref={frameRef}
+        className={`video-frame ${isFull ? "is-full" : ""}`}
+        style={isFull ? undefined : { aspectRatio: String(video.aspect || 16 / 9) }}
+        onDoubleClick={toggleFullscreen}
+        title="Double-click for full screen"
+      >
+        <canvas ref={canvasRef} aria-label="Video preview" />
+        {!hasFrame && <div className="video-wait">Loading picture…</div>}
+      </div>
+      <div className="video-bar">
+        <span className="meta">
+          {frameSize ? `${frameSize[0]}×${frameSize[1]}` : `${video.width}×${video.height}`} · {video.codecName} · {fps} fps
+          {video.fps > 60 && fullQuality ? " (shown at 60)" : ""}
         </span>
-        <div className="head-actions">
-          {enabled && (
-            <>
-              <div className="segmented compact" role="radiogroup" aria-label="Preview quality">
-                <button
-                  role="radio"
-                  aria-checked={fullQuality}
-                  className={fullQuality ? "active" : ""}
-                  onClick={() => onQuality(true)}
-                  title="Source resolution and frame rate"
-                >
-                  Full quality
-                </button>
-                <button
-                  role="radio"
-                  aria-checked={!fullQuality}
-                  className={!fullQuality ? "active" : ""}
-                  onClick={() => onQuality(false)}
-                  title="960 px, 30 fps: lighter on slower PCs"
-                >
-                  Fast
-                </button>
-              </div>
-              <button className="ghost-btn" onClick={toggleFullscreen} title="Full screen (Esc to exit)">
-                Full screen
-              </button>
-            </>
-          )}
-          <button className="ghost-btn" onClick={() => onToggle(!enabled)} aria-pressed={enabled}>
-            {enabled ? "Hide" : "Show video"}
-          </button>
-        </div>
-      </header>
-      {enabled && (
-        <div
-          ref={frameRef}
-          className={`video-frame ${isFull ? "is-full" : ""}`}
-          style={isFull ? undefined : { aspectRatio: String(video.aspect || 16 / 9) }}
-          onDoubleClick={toggleFullscreen}
-        >
-          <canvas ref={canvasRef} aria-label="Video preview" />
-          {!hasFrame && <div className="video-wait">Loading picture…</div>}
-        </div>
-      )}
+        <span style={{ flex: 1 }} />
+        <Segmented
+          size="sm"
+          label="Preview quality"
+          value={fullQuality ? "full" : "fast"}
+          onChange={(v) => onQuality(v === "full")}
+          options={[
+            { value: "full", label: "Full Quality", title: "Source resolution and frame rate" },
+            { value: "fast", label: "Fast", title: "960 px, 30 fps: lighter on slower PCs" },
+          ]}
+        />
+        <button className="icon-btn" onClick={toggleFullscreen} aria-label="Full screen" title="Full screen (Esc to exit)">
+          <Icon name="expand" size={16} />
+        </button>
+        <button className="icon-btn" onClick={() => onToggle(false)} aria-label="Hide video" title="Hide video">
+          <Icon name="eyeSlash" size={16} />
+        </button>
+      </div>
     </section>
   );
 }
