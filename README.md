@@ -20,18 +20,17 @@ Built with [Tauri 2](https://tauri.app) (Rust) and React. ffmpeg does the decodi
 
 ## Screenshots
 
-![Channel Picker previewing a DTS 5.1 movie with the Surround to Stereo preset: synced video, channel strips with live meters, and the sound-reactive orb](docs/screenshot-main.jpg)
-*Previewing a DTS 5.1 movie with **Surround to Stereo**: only SL and SR are enabled, the video plays
-in sync, and the orb reacts on the left and right sides.*
+![Channel Picker playing a DTS 5.1 test movie with the Surround to Stereo preset: presets in the sidebar, synced video, speaker-layout channel cards, the sound-reactive orb and output meters](docs/screenshot-main.jpg)
+*Previewing a DTS 5.1 movie with **Surround to Stereo**, picked from the preset list in the sidebar.
+The video plays in sync and the orb reacts on the left and right sides.*
 
-![Downmix coefficient grid and a verified stereo export](docs/screenshot-export.jpg)
-*The downmix coefficient grid, and an export checked after writing: 2 channels, stereo, exact
-duration, no clipping.*
+![Channel cards arranged like the speakers, the expanded downmix coefficients, and a checked stereo export](docs/screenshot-export.jpg)
+*Channel cards are laid out like the speakers around you: front row FL · C · FR, rear row
+SL · LFE · SR. Below them, the downmix coefficients open as an advanced section. On the right, an
+export checked after writing: 2 channels, stereo, exact duration, no clipping.*
 
-<p align="center">
-  <img src="docs/screenshot-start.jpg" alt="Start screen listing supported decoders and export formats" width="70%">
-</p>
-<p align="center"><em>The start screen shows which formats your ffmpeg build can decode and export.</em></p>
+![The same view in light appearance](docs/screenshot-light.jpg)
+*The app follows the Windows light/dark setting.*
 
 ## Install
 
@@ -47,13 +46,15 @@ first time. Choose **More info → Run anyway**.
 - **Source detection** – codec, profile, channel count and layout for every audio track
   (DTS / DTS-HD MA, Dolby Digital, Dolby Digital Plus, TrueHD, AAC, FLAC, PCM, …).
   Native multichannel sources are clearly marked apart from stereo ones.
-- **Channel selection** – enable, mute or solo each channel, with per-channel gain.
+- **Channel selection** – switch each channel on or off, solo it, and set its gain. The cards are
+  arranged in speaker positions so it's clear which one is which.
 - **Downmix coefficients** – edit how much of each channel feeds Left and Right
   (ITU-R BS.775 Lo/Ro defaults).
 - **No clipping** – *Safe gain* scales the mix so full-scale input on every selected channel cannot
   clip; optional peak normalization on export.
 - **Live preview** – changes are heard immediately; meters, a clip indicator, and a
   sound-reactive dot-matrix orb (bass at the bottom, treble at the top, L/R on each side).
+  Space plays and pauses; the seek bar shows time remaining and has ±10 s skip buttons.
 - **Video preview** – for video files, the picture is shown in sync with the audio at full
   resolution, with full screen and a lighter *Fast* mode. Works with any container ffmpeg reads
   (MKV, M2TS, AVI, MP4, …).
