@@ -314,7 +314,7 @@ pub fn run(
     progress(ExportProgress { phase: "rendering", fraction: 1.0 });
 
     let expected = written as f64 / src_rate as f64;
-    let verification = verify(ff, &req.output, expected, src.duration + pad_seconds, &req.format)?;
+    let verification = verify(ff, &req.output, expected, src.duration, pad_seconds, &req.format)?;
     Ok(ExportResult {
         output: req.output.clone(),
         format_label: OUTPUT_FORMAT_LABEL.into(),
@@ -329,7 +329,17 @@ pub fn run(
 }
 
 /// Re-probes the written file: two channels, stereo layout, duration close to the source.
-pub fn verify(ff: &FfmpegInfo, path: &str, expected: f64, source_duration: f64, fmt: &OutputFormat) -> Result<Verification> {
+/// `source_duration` is the stream duration the container reports; `pad` is the
+/// sync lead-in that was added. Some containers (MKV's DURATION tag) already
+/// count the stream's start offset, so either reading may match.
+pub fn verify(
+    ff: &FfmpegInfo,
+    path: &str,
+    expected: f64,
+    source_duration: f64,
+    pad: f64,
+    fmt: &OutputFormat,
+) -> Result<Verification> {
     let json = run_text(&ff.ffprobe, &["-v", "error", "-show_streams", "-show_format", "-of", "json", path])?;
     let v: serde_json::Value = serde_json::from_str(&json)?;
     let s = v["streams"].get(0).ok_or_else(|| anyhow!("exported file has no audio stream"))?;
@@ -351,7 +361,8 @@ pub fn verify(ff: &FfmpegInfo, path: &str, expected: f64, source_duration: f64, 
     } else if fmt.is_lossy() && diff_ms.abs() > 2.0 {
         notes.push(format!("{diff_ms:+.1} ms from encoder frame padding/priming (normal for lossy formats)"));
     }
-    if (expected - source_duration).abs() > 0.05 {
+    let matches_source = (expected - (source_duration + pad)).abs() <= 0.05 || (expected - source_duration).abs() <= 0.05;
+    if !matches_source {
         notes.push(format!(
             "decoded length {expected:.3}s vs container-reported {source_duration:.3}s (container metadata can be approximate)"
         ));
