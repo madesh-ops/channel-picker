@@ -452,14 +452,12 @@ button:disabled { opacity: 0.4; }
 .ghost-note { font-size: 11.5px; color: var(--label-3); text-align: center; padding-bottom: 8px; }
 
 /* Meters: green → yellow → red, revealed from the bottom (or left) */
-.meter { position: relative; overflow: hidden; border-radius: 4px; flex: none;
-  background: linear-gradient(to top, var(--green) 0%, var(--green) 68%, var(--yellow) 86%, var(--red) 100%); }
+.meter { position: relative; overflow: hidden; border-radius: 4px; flex: none; background: var(--meter-track); }
 .meter-v { width: 8px; height: 100%; }
-.meter-h { height: 6px; flex: 1;
-  background: linear-gradient(to right, var(--green) 0%, var(--green) 68%, var(--yellow) 86%, var(--red) 100%); }
-.meter-mask { position: absolute; background: var(--meter-track); transition: height 70ms linear, width 70ms linear; }
-.meter-v .meter-mask { inset: 0 0 auto 0; }
-.meter-h .meter-mask { inset: 0 0 0 auto; }
+.meter-h { height: 6px; flex: 1; }
+.meter-fill { position: absolute; inset: 0; transition: clip-path 70ms linear;
+  background: linear-gradient(to top, var(--green) 0%, var(--green) 68%, var(--yellow) 86%, var(--red) 100%); }
+.meter-h .meter-fill { background: linear-gradient(to right, var(--green) 0%, var(--green) 68%, var(--yellow) 86%, var(--red) 100%); }
 .meter-row { display: flex; align-items: center; gap: 8px; }
 .meter-row .ch { width: 10px; font-size: 11px; font-weight: 600; color: var(--label-2); }
 
