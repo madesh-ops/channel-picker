@@ -1,0 +1,8 @@
+node_modules
+dist
+src-tauri/target
+src-tauri/gen
+fixtures/
+
+# Local Claude tooling, not part of the app
+skills-lock.json
